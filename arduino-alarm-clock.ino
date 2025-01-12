@@ -5,13 +5,18 @@
 #include "songs.h"
 ArduinoLEDMatrix matrix;
 #include "arduino_secrets.h" 
-int alarm_times[7][2] = {{7,2},{6,2},{6,2},{6,2},{6,2},{6,2},{7,2}};
+int alarm_times[7][2] = {{6,31},{6,1},{6,1},{6,1},{6,1},{6,1},{6,31}};
+int random_note[10];
+int random_index = 0;
 uint32_t alarm_time = 0;
 char ssid[] = SECRET_SSID;
 char pass[] = SECRET_PASS;
 char time_response[400];
 char key_i_want[] = "\"unixtime\":";
+char timezone_key[] = "\"raw_offset\":";
 uint32_t unix_time = 0;
+uint32_t time_zone = 0;
+uint32_t time_zone_negative = false;
 uint32_t time_screen[3];
 
 int status = WL_IDLE_STATUS;
@@ -47,6 +52,10 @@ void setup() {
   }
   
   printWifiStatus();
+
+  for (int i = 0; i < 10; i++) {
+    random_note[i] = random(0, sizeof(RANDOM_ARRAY)/sizeof(RANDOM_ARRAY[0]));
+  }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -91,9 +100,12 @@ void loop() {
 
     read_response();
 
-    boolean key_valid = false;
+    boolean key_valid = true;
+    boolean timezone_valid = true;
     uint32_t key_valid_index = 0;
+    uint32_t timezone_index = 0;
     boolean get_numbers = false;
+    boolean get_timezone = false;
     unix_time = 0;
     for (i = 0; i < 1000; i++) {
       if (time_response[i] == NULL) {
@@ -102,23 +114,45 @@ void loop() {
       if (time_response[i] == '}') {
         Serial.println();
       }
+
       if (get_numbers && time_response[i] >= 48 && time_response[i] <= 57) {
         unix_time = unix_time * 10;
         unix_time = unix_time + (time_response[i] - 48);
       } else {
         get_numbers = false;
       }
+
+      if (get_timezone && time_response[i] >= 48 && time_response[i] <= 57) {
+        time_zone = time_zone * 10;
+        time_zone = time_zone + (time_response[i] - 48);
+      } else if (get_timezone && time_response[i] == '-') {
+        time_zone_negative = !time_zone_negative;
+      } else {
+        get_timezone = false;
+      }
+
       key_valid = key_valid && key_i_want[key_valid_index] == time_response[i];
-      if (key_valid && key_valid_index >= 10) {
+      if (key_valid && key_valid_index >= strlen(key_i_want) - 1) {
         get_numbers = true;
+        Serial.println("Key found!");
       }
       key_valid_index++;
+
+      timezone_valid = timezone_valid && timezone_key[timezone_index] == time_response[i];
+      if (timezone_valid && timezone_index >= strlen(timezone_key) - 1) {
+        get_timezone = true;
+        Serial.println("Timezone found!");
+      }
+      timezone_index++;
+
       Serial.print(time_response[i]);
       if (time_response[i] == '{' || time_response[i] == ',') {
         Serial.println();
         Serial.print("  ");
         key_valid = true;
+        timezone_valid = true;
         key_valid_index = 0;
+        timezone_index = 0;
       }
     }
 
@@ -128,6 +162,10 @@ void loop() {
     Serial.println(unix_time);
 
     Serial.println();
+    Serial.print("Time zone found: ");
+    Serial.println((time_zone_negative ? -time_zone : time_zone));
+
+    Serial.println();
     Serial.println();
     Serial.println("disconnecting from server.");
     client.stop();
@@ -135,17 +173,22 @@ void loop() {
     get_server_time = false;
   }
 
-  current_time = unix_time + ((millis() - previous_millis) / 1000) - (60 * 60 * 5);
+  current_time = unix_time + ((millis() - previous_millis) / 1000) + (time_zone_negative ? -time_zone : time_zone);
 
   if (alarm_time == 0) {
     determine_next_alarm();
   }
 
   while (alarm_time > 0 && alarm_time < current_time) {
-    for (int thisNote = 0; animal_crossing_notes[thisNote]!=-1; thisNote++) {
+    for (int thisNote = 0; animal_crossing_notes[thisNote]!=END; thisNote++) {
+      int noteToPlay = animal_crossing_notes[thisNote];
+      if (noteToPlay == RANDOM) {
+        noteToPlay = RANDOM_ARRAY[random_note[random_index]];
+        random_index = (random_index + 1) % 10;
+      }
       int noteDuration = animal_crossing_speed*animal_crossing_times[thisNote];
-      tone(3, animal_crossing_notes[thisNote],noteDuration*.95);
-      Serial.println(animal_crossing_notes[thisNote]);
+      tone(3, noteToPlay,noteDuration*.95);
+      Serial.println(noteToPlay);
       delay(noteDuration);
       noTone(3);
     }

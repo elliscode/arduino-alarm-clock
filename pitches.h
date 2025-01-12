@@ -177,3 +177,5 @@
 #define NOTE_DS8 4978
 
 #define END -1
+
+#define RANDOM -2
