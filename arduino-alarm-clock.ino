@@ -71,6 +71,33 @@ void setup() {
 }
 
 /* -------------------------------------------------------------------------- */
+void loop() {
+/* -------------------------------------------------------------------------- */  
+  digitalWrite(LED_BUILTIN, LOW);
+  if (get_server_time) {
+    getServerTime();
+  }
+
+  determineCurrentTime();
+
+  if (alarm_time == 0) {
+    initializeAlarm();
+  }
+
+  if (alarm_time > 0 && alarm_time < current_time) {
+    playAlarm();
+  }
+
+  calculateTimeScreen();
+  matrix.loadFrame(time_screen);
+  delay(1000);
+
+  if ((millis() - previous_millis) > SERVER_TIME_REFRESH_RATE) {
+    get_server_time = true;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
 void initializeRandomNotes() {
 /* -------------------------------------------------------------------------- */
   for (int i = 0; i < RANDOM_NOTE_LENGTH; i++) {
@@ -79,7 +106,7 @@ void initializeRandomNotes() {
 }
 
 /* -------------------------------------------------------------------------- */
-void read_response() {
+void readResponse() {
 /* -------------------------------------------------------------------------- */  
   uint32_t received_data_num = 0;
   bool activate = false;
@@ -111,7 +138,7 @@ void getServerTime() {
 
   delay(3000);
 
-  read_response();
+  readResponse();
 
   boolean key_valid = true;
   boolean timezone_valid = true;
@@ -195,33 +222,8 @@ void determineCurrentTime() {
 }
 
 /* -------------------------------------------------------------------------- */
-void loop() {
-/* -------------------------------------------------------------------------- */  
-  digitalWrite(LED_BUILTIN, LOW);
-  if (get_server_time) {
-    getServerTime();
-  }
-
-  determineCurrentTime();
-
-  if (alarm_time == 0) {
-    initializeAlarm();
-  }
-
-  if (alarm_time > 0 && alarm_time < current_time) {
-    playAlarm();
-  }
-
-  calculateTimeScreen();
-  matrix.loadFrame(time_screen);
-  delay(1000);
-
-  if ((millis() - previous_millis) > SERVER_TIME_REFRESH_RATE) {
-    get_server_time = true;
-  }
-}
-
 void playAlarm() {
+/* -------------------------------------------------------------------------- */
   while (alarm_time > 0 && alarm_time < current_time && (alarm_time + ALARM_TIMEOUT) > current_time) {
     for (int thisNote = 0; animal_crossing_notes[thisNote]!=END; thisNote++) {
       int noteToPlay = animal_crossing_notes[thisNote];
@@ -308,7 +310,7 @@ void initializeAlarm() {
 
 /* -------------------------------------------------------------------------- */
 void printWifiStatus() {
-/* -------------------------------------------------------------------------- */  
+/* -------------------------------------------------------------------------- */
   // print the SSID of the network you're attached to:
   Serial.print("SSID: ");
   Serial.println(WiFi.SSID());
