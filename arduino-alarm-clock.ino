@@ -19,7 +19,7 @@ const char pass[] = SECRET_PASS;
 const char key_i_want[] = "\"unixtime\":";
 const char timezone_key[] = "\"raw_offset\":";
 const char server[] = "worldtimeapi.org";
-const int RANDOM_NOTE_LENGTH = 10;
+const int RANDOM_NOTE_LENGTH = 32;
 
 int status = WL_IDLE_STATUS;
 int random_note[RANDOM_NOTE_LENGTH];
