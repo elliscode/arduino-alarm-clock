@@ -1,10 +1,6 @@
-# Arduino WiFi Alarm Clock Without RTC
+# Arduino WiFi Alarm Clock
 
-## Why I made this
-
-- My KaiOS flip phone alarms don't reliably work, some days they will either be late or just never go off
-- I don't want smartspeakers in my house
-- The wifi clocks on amazon were either not wifi clocks, or way too expensive and feature-bloated
+This project uses an Arduino&reg; UNO R4 WiFi and synchronizes to the internet to get the current time. This **does not** require a real time clock module since it synchronizes with the internet every hour.
 
 ## Required Libraries
 
@@ -17,7 +13,6 @@
 
 ## What this does
 
-- **Does not require RTC** since it synchronizes with the internet every hour
 - Makes your arduino into an alarm clock
 - Plays an alarm off of analog pin 3
 - Synchronizes with daylight savings time automatically
