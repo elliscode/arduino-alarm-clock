@@ -14,10 +14,10 @@
 - Makes your arduino into an alarm clock
 - Plays an alarm off of analog pin 3
 - Synchronizes with daylight savings time automatically
+- Max alarm time (defaults to 20 minutes)
 
 # Features I want to implement
 
 - Web interface to set alarms on and off, set time zone, etc.
-- Set a max alarm time (so a missed alarm doesnt go off forever, maybe a max time of 20 minutes or so by default)
 - Set multiple alarms in one day
 - More songs
