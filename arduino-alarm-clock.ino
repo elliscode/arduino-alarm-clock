@@ -11,7 +11,7 @@ WiFiClient client;
 
 const bool LOGS_ON = false;
 const int SERVER_TIME_REFRESH_RATE = 60 * 60 * 1000; // ms
-const int ALARM_TIMEOUT = 60 * 20; // seconds
+const int ALARM_TIMEOUT = 20 * 60; // seconds
 const int alarm_times[7][2] = {{6,31},{6,1},{6,1},{6,1},{6,1},{6,1},{6,31}}; // {{hh,mm}}
 
 const char ssid[] = SECRET_SSID;
@@ -147,6 +147,8 @@ void getServerTime() {
   boolean get_numbers = false;
   boolean get_timezone = false;
   unix_time = 0;
+  time_zone = 0;
+  time_zone_negative = false;
   for (int i = 0; i < 1000; i++) {
     if (time_response[i] == NULL) {
       break;
