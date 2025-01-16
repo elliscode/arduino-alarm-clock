@@ -32,6 +32,7 @@ bool time_zone_negative = false;
 uint32_t time_screen[3];
 bool get_server_time = true;
 unsigned long previous_millis = 0;
+unsigned long previous_millis_candidate = 0;
 time_t current_time = 0;
 bool colon_on = true;
 
@@ -92,7 +93,7 @@ void loop() {
   matrix.loadFrame(time_screen);
   delay(1000);
 
-  if ((millis() - previous_millis) > SERVER_TIME_REFRESH_RATE) {
+  if ((millis() - previous_millis_candidate) > SERVER_TIME_REFRESH_RATE) {
     get_server_time = true;
   }
 }
@@ -108,6 +109,9 @@ void initializeRandomNotes() {
 /* -------------------------------------------------------------------------- */
 void readResponse() {
 /* -------------------------------------------------------------------------- */  
+  for (int i = 0; i < sizeof(time_response)/sizeof(time_response[0]); i++) {
+    time_response[i] = 0;
+  }
   uint32_t received_data_num = 0;
   bool activate = false;
   while (client.available()) {
@@ -134,7 +138,7 @@ void getServerTime() {
     client.println("Connection: close");
     client.println();
   }
-  previous_millis = millis();
+  previous_millis_candidate = millis();
 
   delay(3000);
 
@@ -146,9 +150,7 @@ void getServerTime() {
   uint32_t timezone_index = 0;
   boolean get_numbers = false;
   boolean get_timezone = false;
-  unix_time = 0;
-  time_zone = 0;
-  time_zone_negative = false;
+  boolean data_found = false;
   for (int i = 0; i < 1000; i++) {
     if (time_response[i] == NULL) {
       break;
@@ -177,6 +179,9 @@ void getServerTime() {
     if (key_valid && key_valid_index >= strlen(key_i_want) - 1) {
       get_numbers = true;
       Serial.println("Key found!");
+      unix_time = 0;
+      previous_millis = previous_millis_candidate;
+      data_found = true;
     }
     key_valid_index++;
 
@@ -184,6 +189,9 @@ void getServerTime() {
     if (timezone_valid && timezone_index >= strlen(timezone_key) - 1) {
       get_timezone = true;
       Serial.println("Timezone found!");
+      time_zone = 0;
+      time_zone_negative = false;
+      data_found = true;
     }
     timezone_index++;
 
@@ -198,14 +206,16 @@ void getServerTime() {
     }
   }
 
-  Serial.println();
-  Serial.println();
-  Serial.print("Time found: ");
-  Serial.println(unix_time);
+  if (data_found) {
+    Serial.println();
+    Serial.println();
+    Serial.print("Time found: ");
+    Serial.println(unix_time);
 
-  Serial.println();
-  Serial.print("Time zone found: ");
-  Serial.println((time_zone_negative ? -time_zone : time_zone));
+    Serial.println();
+    Serial.print("Time zone found: ");
+    Serial.println((time_zone_negative ? -time_zone : time_zone));
+  }
 
   Serial.println();
   Serial.println();
