@@ -12,12 +12,11 @@ WiFiClient client;
 const bool LOGS_ON = false;
 const int SERVER_TIME_REFRESH_RATE = 60 * 60 * 1000; // ms
 const int ALARM_TIMEOUT = 20 * 60; // seconds
-const int alarm_times[7][2] = {{6,31},{6,1},{6,1},{6,1},{6,1},{6,1},{6,31}}; // {{hh,mm}}
+const int alarm_times[7][2] = {{6,30},{5,45},{5,45},{5,45},{5,45},{5,45},{6,30}}; // {{hh,mm}}
 
 const char ssid[] = SECRET_SSID;
 const char pass[] = SECRET_PASS;
 const char key_i_want[] = "\"unixtime\":";
-const char timezone_key[] = "\"raw_offset\":";
 const char server[] = "worldtimeapi.org";
 const int RANDOM_NOTE_LENGTH = 32;
 
@@ -27,8 +26,7 @@ int random_index = 0;
 uint32_t alarm_time = 0;
 char time_response[400];
 uint32_t unix_time = 0;
-int time_zone = 0;
-bool time_zone_negative = false;
+int time_zone = -14400;
 uint32_t time_screen[3];
 bool get_server_time = true;
 unsigned long previous_millis = 0;
@@ -133,7 +131,7 @@ void getServerTime() {
   if (client.connect(server, 80)) {
     Serial.println("connected to server");
     // Make a HTTP request:
-    client.println("GET /api/timezone/America/New_York.json HTTP/1.1");
+    client.println("GET /api/timezone/UTC.json HTTP/1.1");
     client.println("Host: worldtimeapi.org");
     client.println("Connection: close");
     client.println();
@@ -145,11 +143,8 @@ void getServerTime() {
   readResponse();
 
   boolean key_valid = true;
-  boolean timezone_valid = true;
   uint32_t key_valid_index = 0;
-  uint32_t timezone_index = 0;
   boolean get_numbers = false;
-  boolean get_timezone = false;
   boolean data_found = false;
   for (int i = 0; i < 1000; i++) {
     if (time_response[i] == NULL) {
@@ -166,15 +161,6 @@ void getServerTime() {
       get_numbers = false;
     }
 
-    if (get_timezone && time_response[i] >= 48 && time_response[i] <= 57) {
-      time_zone = time_zone * 10;
-      time_zone = time_zone + (time_response[i] - 48);
-    } else if (get_timezone && time_response[i] == '-') {
-      time_zone_negative = !time_zone_negative;
-    } else {
-      get_timezone = false;
-    }
-
     key_valid = key_valid && key_i_want[key_valid_index] == time_response[i];
     if (key_valid && key_valid_index >= strlen(key_i_want) - 1) {
       get_numbers = true;
@@ -185,24 +171,12 @@ void getServerTime() {
     }
     key_valid_index++;
 
-    timezone_valid = timezone_valid && timezone_key[timezone_index] == time_response[i];
-    if (timezone_valid && timezone_index >= strlen(timezone_key) - 1) {
-      get_timezone = true;
-      Serial.println("Timezone found!");
-      time_zone = 0;
-      time_zone_negative = false;
-      data_found = true;
-    }
-    timezone_index++;
-
     Serial.print(time_response[i]);
     if (time_response[i] == '{' || time_response[i] == ',') {
       Serial.println();
       Serial.print("  ");
       key_valid = true;
-      timezone_valid = true;
       key_valid_index = 0;
-      timezone_index = 0;
     }
   }
 
@@ -214,7 +188,7 @@ void getServerTime() {
 
     Serial.println();
     Serial.print("Time zone found: ");
-    Serial.println((time_zone_negative ? -time_zone : time_zone));
+    Serial.println(time_zone);
   }
 
   Serial.println();
@@ -228,7 +202,7 @@ void getServerTime() {
 /* -------------------------------------------------------------------------- */
 void determineCurrentTime() {
 /* -------------------------------------------------------------------------- */
-  current_time = unix_time + ((millis() - previous_millis) / 1000) + (time_zone_negative ? -time_zone : time_zone);
+  current_time = unix_time + ((millis() - previous_millis) / 1000) + time_zone;
   Serial.print(current_time);
   Serial.print(" -- ");
 }
