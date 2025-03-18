@@ -1,4 +1,3 @@
-#include "WiFiS3.h"
 #include "Arduino_LED_Matrix.h"
 #include "arduino_secrets.h"
 #include "songs.h"
@@ -19,13 +18,16 @@ char pass[] = SECRET_PASS;    // your network password (use for WPA, or use as k
 
 const bool DEBUG = false;
 const int timeZoneOffsetHours = -4; // todo get this from a API call
+const unsigned long NTP_REFRESH_RATE = 47 * 60 * 1000;
 RTCTime currentTime;
 RTCTime alarmTime;
 uint32_t timeScreen[3];
 bool colon_on = true;
 const int ALARM_TIMEOUT = 20 * 60 * 1000; // ms
-const int alarmTimes[7][2] = {{6,30},{5,45},{5,45},{5,45},{5,45},{5,45},{6,30}}; // {{hh,mm}}
+const int alarmTimes[7][2] = {{7,0},{5,45},{5,45},{5,45},{5,45},{5,45},{7,0}}; // {{hh,mm}}
 int random_index;
+unsigned long millisThisLoop = 0;
+unsigned long hourTicker = 0;
 
 int wifiStatus = WL_IDLE_STATUS;
 WiFiUDP Udp; // A UDP instance to let us send and receive packets over UDP
@@ -91,9 +93,7 @@ void setup(){
 
   timeClient.begin();
   while (!timeClient.isTimeSet() || timeClient.getEpochTime() == 0) {
-    Serial.println("timeClient not set yet, waiting 5 second before attempting...");
-    delay(5000);
-    timeClient.update();
+    updateRtcModuleFromNtpServer();
   }
 
   unsigned long unixTime = timeClient.getEpochTime() + (timeZoneOffsetHours * 3600);
@@ -107,6 +107,15 @@ void setup(){
   Serial.println("The RTC was just set to: " + String(currentTime));
 
   calculateNextAlarmTime();
+}
+
+void updateRtcModuleFromNtpServer() {
+    Serial.println("timeClient not set yet, waiting 5 second before attempting...");
+    delay(5000);
+    timeClient.forceUpdate();
+    if (timeClient.isTimeSet() && timeClient.getEpochTime() != 0) {
+      hourTicker = hourTicker + 1;
+    }
 }
 
 void calculateNextAlarmTime() {
@@ -129,6 +138,7 @@ void calculateNextAlarmTime() {
 }
 
 void loop(){
+  millisThisLoop = millis();
   if (alarmTime.getUnixTime() <= currentTime.getUnixTime()) {
     playAlarm();
     calculateNextAlarmTime();
@@ -136,6 +146,9 @@ void loop(){
   calculateTimeScreen();
   matrix.loadFrame(timeScreen);
   delay(1000);
+  while (millisThisLoop > (hourTicker * NTP_REFRESH_RATE) || timeClient.getEpochTime() == 0) {
+    updateRtcModuleFromNtpServer();
+  }
 }
 
 void calculateTimeScreen() {
@@ -158,7 +171,6 @@ void calculateTimeScreen() {
   for (int i = 0; i < 3; i++) {
     timeScreen[i] = 0;
   }
-
   if (hr >= 10) {
     for (int i = 0; i < 3; i++) {
       timeScreen[i] = timeScreen[i] | hour_tens[i];
@@ -167,15 +179,12 @@ void calculateTimeScreen() {
   for (int i = 0; i < 3; i++) {
     timeScreen[i] = timeScreen[i] | hour_ones[(hr % 10)][i];
   }
-
   if (colon_on) {
     for (int i = 0; i < 3; i++) {
       timeScreen[i] = timeScreen[i] | colon[i];
     }
   }
-
   colon_on = !colon_on;
-
   for (int i = 0; i < 3; i++) {
     timeScreen[i] = timeScreen[i] | minute_tens[(mn / 10)][i];
   }
@@ -186,20 +195,22 @@ void calculateTimeScreen() {
 
 void playAlarm() {
   int happyFaceIndex = 0;
-  unsigned long alarmMiillis = millis();
-  unsigned long previousTimeTicked = millis();
-  while (alarmMiillis > 0 && alarmMiillis <= millis() && (alarmMiillis + ALARM_TIMEOUT) >= millis()) {
+  unsigned long alarmMiillis = millisThisLoop;
+  unsigned long previousTimeTicked = millisThisLoop;
+  while (alarmMiillis > 0 && alarmMiillis <= millisThisLoop && (alarmMiillis + ALARM_TIMEOUT) >= millisThisLoop) {
+    millisThisLoop = millis();
     for (int thisNote = 0; animal_crossing_notes[thisNote]!=END; thisNote++) {
       int noteToPlay = animal_crossing_notes[thisNote];
       int noteDuration = animal_crossing_speed*animal_crossing_times[thisNote];
       tone(3, noteToPlay,noteDuration*.95);
       delay(noteDuration);
       noTone(3);
-      if (millis() - 1000 > previousTimeTicked) {
+      if (millisThisLoop > previousTimeTicked + 1000) {
         matrix.loadFrame(happy_face[happyFaceIndex]);
         happyFaceIndex = (happyFaceIndex + 1) % 4;
-        previousTimeTicked = millis();
+        previousTimeTicked = millisThisLoop;
       }
+      millisThisLoop = millis();
     }
   }
 }
