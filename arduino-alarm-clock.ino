@@ -90,7 +90,7 @@ void setup(){
   Serial.println("\nStarting connection to server...");
 
   timeClient.begin();
-  while (!timeClient.isTimeSet()) {
+  while (!timeClient.isTimeSet() || timeClient.getEpochTime() == 0) {
     Serial.println("timeClient not set yet, waiting 5 second before attempting...");
     delay(5000);
     timeClient.update();
