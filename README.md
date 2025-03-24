@@ -4,8 +4,8 @@ This project uses an Arduino&reg; UNO R4 WiFi and synchronizes to the internet t
 
 ## Required Libraries
 
-- [R4HttpClient](https://github.com/piscodev/r4httpclient)
-- [SimpleTime](https://github.com/physee/SimpleTime)
+- [NTPClient](https://github.com/arduino-libraries/NTPClient)
+- [RTC](https://github.com/cvmanjoo/RTC)
 
 ## Required hardware
 
