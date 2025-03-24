@@ -18,7 +18,7 @@ char pass[] = SECRET_PASS;    // your network password (use for WPA, or use as k
 
 const bool DEBUG = false;
 const int timeZoneOffsetHours = -4; // todo get this from a API call
-const unsigned long NTP_REFRESH_RATE = 47 * 60 * 1000;
+const unsigned long NTP_REFRESH_RATE = 29 * 60 * 1000;
 RTCTime currentTime;
 RTCTime alarmTime;
 uint32_t timeScreen[3];
@@ -95,6 +95,7 @@ void setup(){
   while (!timeClient.isTimeSet() || timeClient.getEpochTime() == 0) {
     updateRtcModuleFromNtpServer();
   }
+  timeClient.setUpdateInterval(NTP_REFRESH_RATE);
 
   unsigned long unixTime = timeClient.getEpochTime() + (timeZoneOffsetHours * 3600);
   Serial.print("Unix time = ");
@@ -145,10 +146,15 @@ void loop(){
   }
   calculateTimeScreen();
   matrix.loadFrame(timeScreen);
+  if (timeClient.update()) { // doesn't actually update, but will update when updating is available
+    Serial.println("Updated the NTP time");
+    unsigned long unixTime = timeClient.getEpochTime() + (timeZoneOffsetHours * 3600);
+    Serial.print("Unix time = ");
+    Serial.println(unixTime);
+    RTCTime timeToSet = RTCTime(unixTime);
+    RTC.setTime(timeToSet);
+  } 
   delay(1000);
-  while (millisThisLoop > (hourTicker * NTP_REFRESH_RATE) || timeClient.getEpochTime() == 0) {
-    updateRtcModuleFromNtpServer();
-  }
 }
 
 void calculateTimeScreen() {
